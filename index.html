@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fruit Ninja</title>
+  <style>
+    body { margin: 0; overflow: hidden; background-color: #222; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+  <canvas id="gameCanvas"></canvas>
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    // Game variables
+    let score = 0;
+    let lives = 3;
+    let isSlicing = false;
+    let lastMouseX = 0;
+    let lastMouseY = 0;
+    const fruits = [];
+
+    // Fruit constructor
+    class Fruit {
+      constructor(x, y, radius, speedX, speedY, image, isBomb = false) {
+        this.x = x;
+        this.y = y;
+        this.radius = radius;
+        this.speedX = speedX;
+        this.speedY = speedY;
+        this.image = image;
+        this.isBomb = isBomb;
+      }
+
+      update() {
+        this.x += this.speedX;
+        this.y += this.speedY;
+        this.speedY += 0.1; // Gravity effect
+        if (this.y + this.radius > canvas.height) {
+          this.y = canvas.height - this.radius;
+          this.speedY *= -0.8; // Bounce effect
+        }
+      }
+
+      draw() {
+        ctx.drawImage(this.image, this.x - this.radius, this.y - this.radius, this.radius * 2, this.radius * 2);
+      }
+    }
+
+    // Load images for fruits and bombs
+    const fruitImages = {
+      apple: new Image(),
+      banana: new Image(),
+      orange: new Image(),
+      bomb: new Image()
+    };
+
+    fruitImages.apple.src = 'images/apple-img.png';
+    fruitImages.banana.src = 'images/banna-img.png';
+    fruitImages.orange.src = 'images/orange-img.png';
+    fruitImages.bomb.src = 'images/boom.png'; // Image for bombs
+
+    // Create a new fruit
+    function createFruit() {
+      const fruitsArray = ['apple', 'banana', 'orange'];
+      const randomFruitName = fruitsArray[Math.floor(Math.random() * fruitsArray.length)];
+      const randomFruitImage = fruitImages[randomFruitName];
+      const radius = 30 + Math.random() * 10;
+      const x = Math.random() * (canvas.width - radius * 2) + radius;
+      const y = canvas.height + radius;
+      const speedX = (Math.random() - 0.5) * 8;
+      const speedY = -Math.random() * 12 - 6;
+      const isBomb = Math.random() < 0.1; // 10% chance to create a bomb
+
+      // If it is a bomb, use bomb image
+      const image = isBomb ? fruitImages.bomb : randomFruitImage;
+      fruits.push(new Fruit(x, y, radius, speedX, speedY, image, isBomb));
+    }
+
+    // Slice logic
+    function handleSlice(x, y) {
+      for (let i = fruits.length - 1; i >= 0; i--) {
+        const dx = x - fruits[i].x;
+        const dy = y - fruits[i].y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        if (distance < fruits[i].radius) {
+          if (fruits[i].isBomb) {
+            lives--; // Reduce life if bomb is sliced
+            fruits.splice(i, 1); // Remove bomb from screen
+          } else {
+            score++; // Increase score if fruit is sliced
+            fruits.splice(i, 1); // Remove fruit from screen
+          }
+          break;
+        }
+      }
+    }
+
+    // Game Over logic
+    function gameOver() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = 'red';
+      ctx.font = '48px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText(`Game Over! Score: ${score}`, canvas.width / 2, canvas.height / 2);
+    }
+
+    // Game loop logic
+    function gameLoop() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      for (let i = fruits.length - 1; i >= 0; i--) {
+        fruits[i].update();
+        fruits[i].draw();
+
+        if (fruits[i].y > canvas.height * 1.5) {
+          fruits.splice(i, 1); // Remove fruit if it falls off screen
+          if (!fruits[i].isBomb) lives--; // Decrease lives if fruit missed
+        }
+      }
+
+      if (Math.random() < 0.03) {
+        createFruit(); // 3% chance to create a new fruit each frame
+      }
+
+      // Display score and lives
+      ctx.fillStyle = 'white';
+      ctx.font = '24px Arial';
+      ctx.fillText(`Score: ${score}`, 10, 30);
+      ctx.fillText(`Lives: ${lives}`, 10, 60);
+
+      if (lives <= 0) {
+        gameOver();
+        return; // End the game
+      }
+
+      requestAnimationFrame(gameLoop); // Continue the game loop
+    }
+
+    // Mouse event handling
+    canvas.addEventListener('mousedown', (e) => { 
+      isSlicing = true; 
+      lastMouseX = e.clientX; 
+      lastMouseY = e.clientY; 
+    });
+
+    canvas.addEventListener('mouseup', () => { 
+      isSlicing = false; 
+    });
+
+    canvas.addEventListener('mousemove', (e) => {
+      if (isSlicing) {
+        handleSlice(e.clientX, e.clientY);
+      }
+    });
+
+    // Touch event handling (for mobile devices)
+    canvas.addEventListener('touchstart', (e) => {
+      isSlicing = true;
+      lastMouseX = e.touches[0].clientX;
+      lastMouseY = e.touches[0].clientY;
+    });
+
+    canvas.addEventListener('touchend', () => { 
+      isSlicing = false; 
+    });
+
+    canvas.addEventListener('touchmove', (e) => {
+      if (isSlicing) {
+        handleSlice(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    });
+
+    gameLoop(); // Start the game loop
+  </script>
+</body>
+</html>
